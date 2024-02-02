@@ -1,6 +1,6 @@
 ---
 title: "Lab 1"
-author: "Your Name Here"
+author: "Laasya Indrakanti"
 output: pdf_document
 date: "11:59PM February 1"
 ---
@@ -15,48 +15,49 @@ To "hand in" the homework, you should first download this file. The best way to 
 * Print out the numerical constant pi with ten digits after the decimal point using the internal constant `pi`.
 
 ```{r}
-#TO-DO
+options(digits = 11)
+pi
 ```
 
 * Sum up the first 103 terms of the series 1 + 1/2 + 1/4 + 1/8 + ...
 
 ```{r}
-#TO-DO
+sum(2^(-(0:102)))
 ```
 
 * Find the product of the first 37 terms in the sequence 1/3, 1/6, 1/9  ...
 
 ```{r}
-#TO-DO
+prod(1/(3*(1:37)))
 ```
 
 
 * Find the product of the first 387 terms of `1 * 1/2 * 1/4 * 1/8 *` ...
 
 ```{r}
-#TO-DO
+prod(2^(-(0:386)))
 ```
 
 Is this answer *exactly* correct? 
   
-#TO-DO
-  
+no
+
 * Figure out a means to express the answer more exactly. Not compute exactly, but express more exactly.
 
 ```{r}
-#TO-DO
+sum(log10(2^(-(0:386))))
 ```
 
 * Create the sequence `x = [Inf, 20, 18, ..., -20]`.
 
 ```{r}
-#TO-DO
+c(Inf, seq(20,-20, by=-2))
 ```
 
 Create the sequence `x = [log_3(Inf), log_3(100), log_3(98), ... log_3(-20)]`.
 
 ```{r}
-x = log(c(Inf, seq(100, -20, by = -2)), base = 3)
+x=log(c(Inf, seq(100,-20, by=-2)),base=3)
 ```
 
 Comment on the appropriateness of the non-numeric values NAN and -Inf.
@@ -64,182 +65,230 @@ Comment on the appropriateness of the non-numeric values NAN and -Inf.
 * Create a vector of booleans where the entry is true if `x[i]` is positive and finite.
 
 ```{r}
-#TO-DO
+
+x > 0 & is.finite(x)
 ```
 
 * Locate the indices of the non-real numbers in this vector. Hint: use the `which` function. Don't hesitate to use the documentation via `?which`.
 
 ```{r}
-#TO-DO
+?which
+which(is.infinite(x) | is.nan(x))
 ```
-
 * Locate the indices of the infinite quantities in this vector. 
 
 ```{r}
-#TO-DO
+which(is.infinite(x))
 ```
 
 * Locate the indices of the min and max in this vector. Hint: use the `which.min` and `which.max` functions.
 
 ```{r}
-x_within_infs = ifelse(is.infinite(x), NA, x)
-which.min(x_within_infs)
-which.max(x_within_infs)
-rm(x_within_infs)
+y=x
+y[is.infinite(x)]=NA
+which.min(y)
+which.max(y)
 ```
 
 * Count the number of unique values in `x`.
 
 ```{r}
-#TO-DO
+length(unique(x))
 ```
 
 * Cast `x` to a factor. Do the number of levels make sense?
 
 ```{r}
-#TO-DO
+as.factor(x)
 ```
 
 * Cast `x` to integers. What do we learn about R's infinity representation in the integer data type?
   
 ```{r}
-#TO-DO
+as.integer(x)
 ```
 
 * Use `x` to create a new vector `y` containing only the real numbers in x.
 
 ```{r}
-#TO-DO
+y=x[is.finite(x)]
 ```
 
 * Use the left rectangle method to numerically integrate x^2 from 0 to 1 with rectangle width size 1e-6.
 
 ```{r}
-#TO-DO
+sum((seq(0,1-1e-6, by = 1e-6))^2)*1e-6
 ```
 
 
 * Calculate the average of 100 realizations of standard Bernoullis in one line using the `sample` function.
 
 ```{r}
-#TO-DO
+mean(sample(c(0,1), size=100, replace=TRUE))
 ```
 
 
 * Calculate the average of 500 realizations of Bernoullis with p = 0.9 in one line using the `sample` and `mean` functions.
 
 ```{r}
-#TO-DO
+mean(sample(c(0,1), size=500, replace=TRUE, prob = c(.1, .9)))
 ```
 
 
 * Calculate the average of 1000 realizations of Bernoullis with p = 0.9 in one line using `rbinom`.
 
 ```{r}
-#TO-DO
+mean(rbinom(1000, size=1, prob = 0.9))
 ```
 
 
 * Let `n = 50`. Create a n x n matrix `R` of exactly 50% entries 0's, 25% 1's 25% 2's. These values should be in random locations.
 
 ```{r}
-#TO-DO
+vec = sample(c(rep(0, 1250), rep(1, 625), rep(2, 625)))
+vec
+R = matrix(vec, nrow=50, ncol=50)
+R
+table(c(R))
 ```
 
 * Randomly punch holes (i.e. `NA`) values in this matrix so that an each entry is missing with probability 30%.
 
 ```{r}
-n = 100
-X = matrix(rnorm(n^2), nrow = n, ncol = n)
-for (i in 1 : n){
-  for (j in 1 : n){
-    if (runif(1) < 0.3){
-      X[i,j] = NA
-    }
-  }
-}
+R[runif(2500)<.3]=NA
+R
 ```
 
 * Sort the rows in matrix `R` by the largest row sum to lowest. Be careful about the NA's!
 
 ```{r}
-#TO-DO
+R[order(rowSums(R, na.rm = TRUE), decreasing = TRUE),]
 ```
 
 * We will now learn the `apply` function. This is a handy function that saves writing for loops which should be eschewed in R. Use the apply function to compute a vector whose entries are the standard deviation of each row. Use the apply function to compute a vector whose entries are the standard deviation of each column. Be careful about the NA's! This should be one line.
 
 ```{r}
-#TO-DO
+apply(R, MARGIN=1, sd, na.rm=TRUE)
+apply(R, MARGIN=2, sd, na.rm=TRUE)
 ```
 
 * Use the `apply` function to compute a vector whose entries are the count of entries that are 1 or 2 in each column. This should be one line.
 
 ```{r}
-#TO-DO
+apply(R, MARGIN = 2, function(x){sum(x==1|x==2, na.rm = TRUE)})
 ```
 
 * Use the `split` function to create a list whose keys are the column number and values are the vector of the columns. Look at the last example in the documentation `?split`.
 
 ```{r}
-#TO-DO
+split(R, col(R))
 ```
 
 * In one statement, use the `lapply` function to create a list whose keys are the column number and values are themselves a list with keys: "min" whose value is the minimum of the column, "max" whose value is the maximum of the column, "pct_missing" is the proportion of missingness in the column and "first_NA" whose value is the row number of the first time the NA appears.
 
 ```{r}
-#TO-DO
+lapply(1:50, function(n){
+  column=R[ , n]
+  list(
+    min = min(column, na.rm = TRUE),
+    max = max(column, na.rm = TRUE),
+    pct_missing = mean(is.na(column)),
+    first_NA = which(is.na(column))[1]
+  )
+})
+
+result_list <- lapply(R, function(col) list(min = min(col, na.rm = TRUE), max = max(col, na.rm = TRUE), pct_missing = mean(is.na(col)), first_NA = min(which(!complete.cases(col)))))
+
 ```
 
 * Set a seed and then create a vector `v` consisting of a sample of 1,000 iid normal realizations with mean -10 and variance 100.
 
 ```{r}
-#TO-DO
+set.seed(1984)
+v = rnorm(1000, mean = -10, sd = sqrt(100))
+v
 ```
 
 * Repeat this exercise by resetting the seed to ensure you obtain the same results.
 
 ```{r}
-#TO-DO
+set.seed(1984)
+v = rnorm(1000, mean = -10, sd = sqrt(100))
+v
 ```
 
 * Find the average of `v` and the standard error of `v`.
 
 ```{r}
-#TO-DO
+average = mean(v)
+average
+se = sd(v)/sqrt(length(v))
+se
 ```
 
 * Find the 5%ile of `v` and use the `qnorm` function to compute what it theoretically should be. Is the estimate about what is expected by theory?
 
+The estimate is pretty close
+
 ```{r}
-#TO-DO
+quantile(v, 0.05)
+qnorm(0.05, mean = -10, sd = sqrt(100))
 ```
 
 * What is the percentile of `v` that corresponds to the value 0? What should it be theoretically? Is the estimate about what is expected by theory?
 
 ```{r}
-#TO-DO
+ecdf(v)(0)*100 #empirical cumulative distribution function
+pnorm(0-(-10)/sd(v))*100 #percentile corresponding to the z score
+pnorm(0, mean = -10, sd = sqrt(100)) * 100 #theoretical value
 ```
 
 * Create a function `my_reverse` which takes as required input a vector `v` and returns the vector in reverse where the first entry is the last entry, etc. No function calls are allowed inside your function otherwise that would defeat the purpose of the exercise! (Yes, there is a base R function that does this called `rev`). Use `head` on `v` and `tail` on `my_reverse(v)` to verify it works.
-
 ```{r}
-#TO-DO
+my_reverse = function(v){
+  n = length(v)
+  reversed = numeric(n)
+  for(i in 1:n){
+    reversed[n-i+1]=v[i]
+  }
+  return(reversed)
+}
+head(v)
+tail(my_reverse(v))
 ```
 
 * Create a function `flip_matrix` which takes as required input a matrix, an argument `dim_to_rev` that returns the matrix with the rows in reverse order or the columns in reverse order depending on the `dim_to_rev` argument. Let the default be the dimension of the matrix that is greater. If the number of rows 
 
 ```{r}
-#TO-DO
+flip_matrix = function(matrix, dim_to_rev=NULL){
+  if(is.null(dim_to_rev)){
+    dim_to_rev=ifelse(nrow(matrix)>=ncol(matrix), 1, 2)
+  }
+  if(dim_to_rev == 1){
+    matrix[nrow(matrix):1, ]
+  } else if(dim_to_rev == 2) {
+    matrix[ , ncol(matrix):1]
+  } else {
+    stop("dim_to_rev needs to be 1, 2, or NULL")
+  }
+}
 ```
 
 * Create a list named `my_list` with keys "A", "B", ... where the entries are arrays of size 1, 2 x 2, 3 x 3 x 3, etc. Fill the array with the numbers 1, 2, 3, etc. Make 8 entries according to this sequence.
-
 ```{r}
-#TO-DO
+my_list = list("A" = array(1,1),
+               "B" = array(2, c(2,2)),
+               "C" = array(3, c(3,3,3)),
+               "D" = array(4, c(4,4,4,4)),
+               "E" = array(5, c(5,5,5,5,5)),
+               "F" = array(6, c(6,6,6,6,6,6)),
+               "G" = array(7, c(7,7,7,7,7,7,7)),
+               "H" = array(8, c(8,8,8,8,8,8,8,8)))
+?array
+
 ```
 
 Run the following code:
-
 ```{r}
 lapply(my_list, object.size)
 ```
@@ -251,14 +300,12 @@ Use `?object.size` to read about what these functions do. Then explain the outpu
 ## Packages
 
 Install the package `pacman` using regular base R.
-
 ```{r}
-install.packages("pacman")
+#install.packages("pacman")
 ```
 
 
 First, install the package `testthat` (a widely accepted testing suite for R) from https://github.com/r-lib/testthat using `pacman`. If you are using Windows, this will be a long install, but you have to go through it for some of the stuff we are doing in class. LINUX (or MAC) is preferred for coding. If you can't get it to work, install this package from CRAN (still using `pacman`), but this is not recommended long term.
-
 ```{r}
 pacman::p_load(testthat)
 ```
@@ -266,7 +313,7 @@ pacman::p_load(testthat)
 * Create vector `v` consisting of all numbers from -100 to 100 and test using the second line of code su
 
 ```{r}
-v = seq(-100, 100)
+v = seq(-100, 101)
 expect_equal(v, -100 : 101)
 ```
 
@@ -285,6 +332,8 @@ expect_equal(my_reverse(c("A", "B", "C")), c("C", "B", "A"))
 
 ```{r}
 lorem = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi posuere varius volutpat. Morbi faucibus ligula id massa ultricies viverra. Donec vehicula sagittis nisi non semper. Donec at tempor erat. Integer dapibus mi lectus, eu posuere arcu ultricies in. Cras suscipit id nibh lacinia elementum. Curabitur est augue, congue eget quam in, scelerisque semper magna. Aenean nulla ante, iaculis sed vehicula ac, finibus vel arcu. Mauris at sodales augue. "
+
+sample(unlist(strsplit(lorem, "\\. ")))
 ```
 
 You have a set of names divided by gender (M / F) and generation (Boomer / GenX / Millenial):
@@ -301,11 +350,26 @@ Create a list-within-a-list that will intelligently store this data.
 ```{r}
 #HINT: 
 #strsplit("Theodore, Bernard, Gene, Herbert, Ray, Tom, Lee, Alfred, Leroy, Eddie", split = ", ")[[1]]
-#TO-DO
+list_within_list=list(
+  M=list(
+    Boomer=strsplit("Theodore, Bernard, Gene, Herbert, Ray, Tom, Lee, Alfred, Leroy, Eddie", split = ", ")[[1]],
+  GenX=strsplit("Theodore, Bernard, Gene, Herbert, Ray, Tom, Lee, Alfred, Leroy, Eddie", split = ", ")[[1]],
+  Millennial=strsplit("Theodore, Bernard, Gene, Herbert, Ray, Tom, Lee, Alfred, Leroy, Eddie", split = ", ")[[1]]
+  ),
+  F=list(
+    Boomer=strsplit("Theodore, Bernard, Gene, Herbert, Ray, Tom, Lee, Alfred, Leroy, Eddie", split = ", ")[[1]],
+  GenX=strsplit("Theodore, Bernard, Gene, Herbert, Ray, Tom, Lee, Alfred, Leroy, Eddie", split = ", ")[[1]],
+  Millennial=strsplit("Theodore, Bernard, Gene, Herbert, Ray, Tom, Lee, Alfred, Leroy, Eddie", split = ", ")[[1]]
+  )
+) 
+
+list_within_list
+list_within_list$M$GenX[3]
+
 ```
 
 Now cleanup the namespace by deleting all stored objects and functions:
 
 ```{r}
-#TO-DO
+rm(list = ls())
 ```
