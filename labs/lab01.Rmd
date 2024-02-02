@@ -301,7 +301,7 @@ Use `?object.size` to read about what these functions do. Then explain the outpu
 
 Install the package `pacman` using regular base R.
 ```{r}
-#install.packages("pacman")
+install.packages("pacman")
 ```
 
 
