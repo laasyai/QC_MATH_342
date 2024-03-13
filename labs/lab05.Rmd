@@ -56,7 +56,7 @@ SST = sum((y - y_bar)^2)
 RSQ = SSR/SST
 ```
 
-Write a for loop to each time bind a new column of 100 standard iid normals to the matrix X and find the R^2 each time until the number of columns is 100. Create a vector to save all R^2's. What happened?? 
+Write a for loop to each time bind a new column of 100 standard iid normals to the matrix X and find the R^2 each time until the number of columns is 100. Create a vector to save all R^2's. What happened?? The values approach 1.
 
 ```{r}
 rsqs = array(NA, n)
