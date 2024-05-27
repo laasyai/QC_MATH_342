@@ -5,6 +5,7 @@ output: html_document
 date: "2024-05-15"
 ---
 
+Loading libraries
 ```{r}
 # Load necessary libraries
 library(tidyverse)  # A collection of R packages for data manipulation and visualization
@@ -20,6 +21,8 @@ pacman::p_load(YARF)
 pacman::p_load(xtable)
 ```
 
+
+Data Munging
 ```{r}
 # Load the dataset
 housing_data = read_csv('housing_data_2016_2017.csv')
@@ -58,7 +61,7 @@ housing_data$kitchen_type = replace(housing_data$kitchen_type, housing_data$kitc
 #convert to factors
 housing_data$model_type = as.factor(housing_data$model_type)
 housing_data$community_district_num = as.factor(housing_data$community_district_num)
-housing_data$date_of_sale = as.factor(housing_data$date_of_sale)
+housing_data$date_of_sale = as.Date(housing_data$date_of_sale, format='%m/%d/%Y')
 housing_data$dining_room_type = as.factor(housing_data$dining_room_type)
 housing_data$fuel_type = as.factor(housing_data$fuel_type)
 housing_data$full_address_or_zip_code = as.factor(housing_data$full_address_or_zip_code)
@@ -81,6 +84,210 @@ housing_data$sale_price = parse_number(housing_data$sale_price)
 housing_data$total_taxes = as.character(housing_data$total_taxes)
 housing_data$total_taxes = parse_number(housing_data$total_taxes)
 
-
+#delete model type
+housing_data=housing_data %>% select(-model_type)
 ```
+
+Collapse zip codes and impute
+```{r}
+#extract zip from address, bin to areas in Queens
+housing_data$zip_code = str_extract(housing_data$full_address_or_zip_code,"[0-9]{5}") 
+housing_data %<>% select(-full_address_or_zip_code)
+housing_data$zip_code = as.numeric(housing_data$zip_code)
+#bin by month of sale
+housing_data$month_of_sale = as.integer(format(housing_data$date_of_sale, "%m"))
+housing_data %<>% select(-date_of_sale)
+
+#create missingness matrix
+M = as_tibble(apply(is.na(housing_data), 2, as.numeric))
+colnames(M) = paste("is_missing_", colnames(housing_data), sep = "")
+M %<>% 
+  select_if(function(x){sum(x) > 0})
+#head(M)
+#skimr::skim(M)
+
+#impute with missForest
+Ximp = missForest(data.frame(housing_data))$ximp
+skimr::skim(Ximp)
+
+#combine Ximp with M to get new X matrix
+Xy=cbind(Ximp, M)
+
+#bin zip codes
+Xy %<>% mutate(bin_zip = cut(zip_code, breaks = c(11003,11005,11106,11360,11364,11367,11378,11385,11421,11429,11436)))
+Xy %<>% select(-zip_code)
+
+#bin number of floors
+Xy %<>% mutate(bin_floor = cut(num_floors_in_building, breaks = c(0,4,7,10,16,25,35)))
+Xy %<>% select(-num_floors_in_building)
+
+#bin year built into decade
+Xy %<>% mutate(bin_decade_built = cut(approx_year_built, breaks = c(1893,1911,1920,1930,1940,1950,1960,1970,1980,1990,2000,2010,2020)))
+Xy %<>% select(-approx_year_built)
+Xy$is_missing_approx_decade_built = Xy$is_missing_approx_year_built
+Xy %<>% select(-is_missing_approx_year_built)
+
+#bin walk score
+Xy %<>% mutate(bin_walk_score = cut(walk_score, breaks=c(0,20,40,60,80,100)))
+Xy %<>% select(-walk_score)
+
+#remove zips out of range
+Xy %<>% drop_na(bin_zip)
+```
+
+Convert to factor
+```{r}
+Xy$num_total_rooms = as.factor(Xy$num_total_rooms)
+Xy$num_bedrooms = as.factor(Xy$num_bedrooms)
+Xy$num_full_bathrooms = as.factor(Xy$num_full_bathroom)
+Xy$num_half_bathrooms=as.integer(Xy$num_half_bathrooms)
+Xy$num_half_bathrooms = as.factor(Xy$num_half_bathrooms)
+Xy$month_of_sale = as.factor(Xy$month_of_sale)
+Xy$is_missing_approx_decade_built = as.factor(Xy$is_missing_approx_decade_built)
+Xy$is_missing_common_charges = as.factor(Xy$is_missing_common_charges)
+Xy$is_missing_community_district_num = as.factor(Xy$is_missing_community_district_num)
+Xy$is_missing_dining_room_type = as.factor(Xy$is_missing_dining_room_type)
+Xy$is_missing_fuel_type = as.factor(Xy$is_missing_fuel_type)
+Xy$is_missing_kitchen_type = as.factor(Xy$is_missing_kitchen_type)
+Xy$is_missing_maintenance_cost = as.factor(Xy$is_missing_maintenance_cost)
+Xy$is_missing_num_floors_in_building = as.factor(Xy$is_missing_num_floors_in_building)
+Xy$is_missing_num_half_bathrooms = as.factor(Xy$is_missing_num_half_bathrooms)
+Xy$is_missing_parking_charges = as.factor(Xy$is_missing_parking_charges)
+Xy$is_missing_pct_tax_deductibl = as.factor(Xy$is_missing_pct_tax_deductibl)
+Xy$is_missing_sq_footage = as.factor(Xy$is_missing_sq_footage)
+Xy$is_missing_total_taxes = as.factor(Xy$is_missing_total_taxes)
+```
+
+Regression Tree
+```{r}
+#train-test split
+test_indices = sample(1 : nrow(Xy), 121)
+train_indices = setdiff(1 : nrow(Xy), test_indices)
+Xy_train = Xy[train_indices, ]
+X_train = Xy_train
+y_train = Xy_train$sale_price
+X_train$sale_price = NULL
+n_train = nrow(X_train)
+Xy_test = Xy[test_indices, ]
+X_test = Xy_test
+y_test = Xy_test$sale_price
+X_test$sale_price = NULL
+tree_mod = YARFCART(X_train, y_train, calculate_oob_error = FALSE)
+#tree prediction
+y_hat_train_tree = predict(tree_mod, X_train)
+#in sample RMSE
+e_tree = y_train - y_hat_train_tree
+in_sample_rmse_tree = sqrt(mean(e_tree^2))
+in_sample_rmse_tree
+in_sample_Rsq_tree = 1 - (sum(e_tree^2) / sum((y_train - mean(y_train))^2))
+in_sample_Rsq_tree
+#tree image
+illustrate_trees(tree_mod, max_depth = 6, margin_in_px= 100, length_in_px_per_half_split = 40, open_file = TRUE)
+get_tree_num_nodes_leaves_max_depths(tree_mod)
+#predict oos
+y_hat_test_tree = predict(tree_mod, X_test)
+oos_e_tree = y_test - y_hat_test_tree
+#oos RMSE
+oos_rmse_tree = sqrt(mean(oos_e_tree^2))
+#oos Rsq
+oos_Rsq_tree = 1 - (sum(oos_e_tree^2) / sum((y_test - mean(y_test))^2))
+oos_Rsq_tree
+```
+
+Vanilla OLS
+```{r}
+#convert to numeric
+Xy_OLS = lapply(Xy, as.numeric)
+Xy_OLS = as.data.frame(Xy_OLS)
+y = Xy_OLS$sale_price
+X = Xy_OLS %>% select(-sale_price)
+t = 10
+OLS_in_rmse = c(rep(NA,t))
+OLS_in_Rsq = c(rep(NA,t))
+OLS_oos_rmse = c(rep(NA,t))
+OLS_oos_Rsq = c(rep(NA,t))
+
+#train-test split
+for(i in 1 : t){
+  test_indices = sample(1 : nrow(Xy_OLS), 121)
+  train_indices = setdiff(1 : nrow(Xy_OLS), test_indices)
+  Xy_train = Xy_OLS[train_indices, ]
+  y_train = Xy_train$sale_price
+  X_train = Xy_train
+  X_train$sale_price = NULL
+  n_train = nrow(X_train)
+  Xy_test = Xy_OLS[test_indices, ]
+  y_test = Xy_test$sale_price
+  X_test = Xy_test
+  X_test$sale_price = NULL
+  OLS_mod = lm(y_train ~ ., X_train)
+  #in-sample
+  y_hat_train = predict(OLS_mod, X_train)
+  e_OLS = y_train - y_hat_train
+  OLS_in_rmse[i] = sqrt(mean(e_OLS^2))
+  OLS_in_Rsq[i] = 1 - (sum(e_OLS^2) / sum((y_train - mean(y_train))^2))
+  #oos
+  y_hat_test = predict(OLS_mod, X_test)
+  e_oos_OLS = y_test - y_hat_test
+  OLS_oos_rmse[i] = sqrt(mean(e_oos_OLS^2))
+  OLS_oos_Rsq[i] = 1 - (sum(e_oos_OLS^2) / sum((y_test - mean(y_test))^2))
+}
+
+summary(OLS_mod)
+mean(OLS_in_rmse)
+mean(OLS_in_Rsq)
+mean(OLS_oos_rmse)
+mean(OLS_oos_Rsq)
+
+library(xtable)
+newobject = xtable(summary(OLS_mod))
+print.xtable(newobject, type = 'latex', file = 'filename.tex')
+```
+
+
+Random Forest
+```{r}
+rf_in_rmse = c(rep(NA,5))
+rf_in_Rsq = c(rep(NA,5))
+rf_oos_rmse = c(rep(NA,5))
+rf_oos_Rsq = c(rep(NA,5))
+#train-test split
+for(i in 1 : 5){
+  test_indices = sample(1 : nrow(Xy), 121)
+  train_indices = setdiff(1 : nrow(Xy), test_indices)
+  #train
+  Xy_train = Xy[train_indices, ]
+  X_train = Xy_train
+  y_train = Xy_train$sale_price
+  X_train$sale_price = NULL
+  #test
+  Xy_test = Xy[test_indices, ]
+  X_test = Xy_test
+  y_test = Xy_test$sale_price
+  X_test$sale_price = NULL
+  #random forest model
+  rf_mod = YARF(X_train, y_train, mtry = 65)
+  #in-sample
+  y_hat_rf_train = predict(rf_mod, X_train)
+  e_rf = y_train - y_hat_rf_train
+  rf_in_rmse[i] = sqrt(mean(e_rf^2))
+  rf_in_Rsq[i] = 1 - (sum(e_rf^2) / sum((y_train - mean(y_train))^2))
+  #oos
+  y_hat_rf_test = predict(rf_mod, X_test)
+  e_rf_oos = y_test - y_hat_rf_test
+  rf_oos_rmse[i] = sqrt(mean(e_rf_oos^2))
+  rf_oos_Rsq[i] = 1 - (sum(e_rf_oos^2) / sum((y_test - mean(y_test))^2))
+}
+mean(rf_in_rmse)
+mean(rf_in_Rsq)
+mean(rf_oos_rmse)
+mean(rf_oos_Rsq)
+```
+
+
+
+
+
+
+
 
