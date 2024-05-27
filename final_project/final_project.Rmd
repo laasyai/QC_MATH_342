@@ -1,0 +1,86 @@
+---
+title: "final_project"
+author: "Laasya Indrakanti"
+output: html_document
+date: "2024-05-15"
+---
+
+```{r}
+# Load necessary libraries
+library(tidyverse)  # A collection of R packages for data manipulation and visualization
+library(readr)      # For reading CSV files
+library(magrittr)
+pacman::p_load(missForest)
+if (!pacman::p_isinstalled(YARF)){
+  pacman::p_install_gh("kapelner/YARF/YARFJARs", ref = "dev")
+  pacman::p_install_gh("kapelner/YARF/YARF", ref = "dev", force = TRUE)
+}
+options(java.parameters = "-Xmx4000m")
+pacman::p_load(YARF)
+pacman::p_load(xtable)
+```
+
+```{r}
+# Load the dataset
+housing_data = read_csv('housing_data_2016_2017.csv')
+
+# Remove unnecessary columns
+housing_data = housing_data[, !(colnames(housing_data) %in% c('HITId', 'HITTypeId', 'Title', 'Description', 'Keywords', 'Reward', 'CreationTime', 'MaxAssignments', 'RequesterAnnotation', 'AssignmentDurationInSeconds', 'AutoApprovalDelayInSeconds', 'Expiration', 'NumberOfSimilarHITs', 'LifetimeInSeconds', 'AssignmentId', 'WorkerId', 'AssignmentStatus', 'AcceptTime', 'SubmitTime', 'AutoApprovalTime', 'ApprovalTime', 'RejectionTime', 'RequesterFeedback', 'WorkTimeInSeconds', 'LifetimeApprovalRate', 'Last30DaysApprovalRate', 'Last7DaysApprovalRate', 'URL', 'url'))]
+
+# Convert 'cats_allowed' and 'dogs_allowed' to binary
+housing_data$cats_allowed = ifelse(housing_data$cats_allowed == 'yes', 1, 0)
+housing_data$dogs_allowed = ifelse(housing_data$dogs_allowed == 'yes', 1, 0)
+housing_data$coop_condo = ifelse(housing_data$coop_condo == 'yes', 1, 0)
+housing_data$garage_exists= ifelse(is.na(housing_data$garage_exists), 'no','yes')
+
+# Convert character columns to numeric by removing non-numeric characters and converting to numeric
+columns_to_convert = c('common_charges', 'maintenance_cost', 'parking_charges', 'total_taxes', 'listing_price_to_nearest_1000', 'sale_price')
+
+#remove non-digit, non negative sign, non decimal characters
+for (col in columns_to_convert) {
+  housing_data[[col]] = as.numeric(gsub('[^0-9.-]', '', housing_data[[col]]))
+  
+# Convert 'date_of_sale' to Date type
+housing_data$date_of_sale = as.Date(housing_data$date_of_sale, format='%m/%d/%Y')
+}
+
+# Convert 'none' fuel type to 'other'
+housing_data$fuel_type = ifelse(housing_data$fuel_type == 'none', 'other', housing_data$fuel_type)
+
+#remove rows without sale price
+housing_data = housing_data %>% drop_na(sale_price)
+
+#fix spelling
+housing_data$garage_exists = replace(housing_data$garage_exists,housing_data$garage_exists %in% c('Underground','Yes','UG','1','eys'),'yes')
+housing_data$kitchen_type = replace(housing_data$kitchen_type, housing_data$kitchen_type %in% c("eat in","Eat In","Eat in"), 'eat-in')
+housing_data$kitchen_type = replace(housing_data$kitchen_type, housing_data$kitchen_type == 'Combo', 'combo')
+
+#convert to factors
+housing_data$model_type = as.factor(housing_data$model_type)
+housing_data$community_district_num = as.factor(housing_data$community_district_num)
+housing_data$date_of_sale = as.factor(housing_data$date_of_sale)
+housing_data$dining_room_type = as.factor(housing_data$dining_room_type)
+housing_data$fuel_type = as.factor(housing_data$fuel_type)
+housing_data$full_address_or_zip_code = as.factor(housing_data$full_address_or_zip_code)
+housing_data$garage_exists = as.factor(housing_data$garage_exists)
+housing_data$kitchen_type = as.factor(housing_data$kitchen_type)
+housing_data$cats_allowed = as.factor(housing_data$cats_allowed)
+housing_data$dogs_allowed = as.factor(housing_data$dogs_allowed)
+housing_data$coop_condo = as.factor(housing_data$coop_condo)
+housing_data$garage_exists = as.factor(housing_data$garage_exists)
+
+#converting to numeric
+housing_data$common_charges = as.character(housing_data$common_charges)
+housing_data$common_charges = parse_number(housing_data$common_charges)
+housing_data$maintenance_cost = as.character(housing_data$maintenance_cost)
+housing_data$maintenance_cost = parse_number(housing_data$maintenance_cost)
+housing_data$parking_charges = as.character(housing_data$parking_charges)
+housing_data$parking_charges = parse_number(housing_data$parking_charges)
+housing_data$sale_price = as.character(housing_data$sale_price)
+housing_data$sale_price = parse_number(housing_data$sale_price)
+housing_data$total_taxes = as.character(housing_data$total_taxes)
+housing_data$total_taxes = parse_number(housing_data$total_taxes)
+
+
+```
+
